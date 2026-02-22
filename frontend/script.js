@@ -29,6 +29,11 @@ function setupEventListeners() {
         if (e.key === 'Enter') sendMessage();
     });
     
+    // New chat button
+    const newChatBtn = document.getElementById('newChatBtn');
+    if (newChatBtn) {
+        newChatBtn.addEventListener('click', startNewChat);
+    }
     
     // Suggested questions
     document.querySelectorAll('.suggested-item').forEach(button => {
@@ -160,6 +165,40 @@ async function createNewSession() {
     currentSessionId = null;
     chatMessages.innerHTML = '';
     addMessage('Welcome to the Course Materials Assistant! I can help you with questions about courses, lessons and specific content. What would you like to know?', 'assistant', null, true);
+}
+
+async function startNewChat() {
+    // Store old session ID for cleanup
+    const oldSessionId = currentSessionId;
+    
+    // Clear UI immediately for better responsiveness
+    chatMessages.innerHTML = '';
+    currentSessionId = null;
+    
+    // Add welcome message
+    addMessage('Welcome to the Course Materials Assistant! I can help you with questions about courses, lessons and specific content. What would you like to know?', 'assistant', null, true);
+    
+    // Clean up old session on backend if it exists
+    if (oldSessionId) {
+        try {
+            await fetch(`${API_URL}/session/delete`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    session_id: oldSessionId
+                })
+            });
+            console.log(`Old session ${oldSessionId} cleaned up`);
+        } catch (error) {
+            console.error('Error cleaning up old session:', error);
+            // Non-blocking: session will be garbage collected eventually
+        }
+    }
+    
+    // Focus input for immediate typing
+    chatInput.focus();
 }
 
 // Load course statistics

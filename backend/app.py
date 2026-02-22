@@ -108,6 +108,36 @@ async def get_course_stats():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+class DeleteSessionRequest(BaseModel):
+    """Request model for deleting a session"""
+    session_id: str
+
+
+class DeleteSessionResponse(BaseModel):
+    """Response model for session deletion"""
+    success: bool
+    message: str
+
+
+@app.post("/api/session/delete", response_model=DeleteSessionResponse)
+async def delete_session(request: DeleteSessionRequest):
+    """Delete a conversation session"""
+    try:
+        success = rag_system.session_manager.delete_session(request.session_id)
+        if success:
+            return DeleteSessionResponse(
+                success=True, 
+                message=f"Session {request.session_id} deleted successfully"
+            )
+        else:
+            return DeleteSessionResponse(
+                success=False, 
+                message=f"Session {request.session_id} not found"
+            )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.on_event("startup")
 async def startup_event():
     """Load initial documents on startup"""
