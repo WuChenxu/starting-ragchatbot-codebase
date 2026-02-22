@@ -96,10 +96,11 @@ The application will be available at:
 
 **VectorStore** (`vector_store.py`):
 - Two ChromaDB collections:
-  - `course_catalog`: Course metadata for name resolution
+  - `course_catalog`: Course metadata for name resolution (includes lesson links)
   - `course_content`: Chunked text content for semantic search
 - Handles course name fuzzy matching via vector similarity
 - Supports filtering by course and lesson number
+- `get_lesson_link(course_title, lesson_number)`: Retrieves lesson URL from catalog
 
 **DocumentProcessor** (`document_processor.py`):
 - Parses course text files with expected format:
@@ -120,6 +121,7 @@ The application will be available at:
 - `CourseSearchTool`: Searches course content with metadata filtering
 - `ToolManager`: Registers and executes tools, tracks sources
 - Tool definitions use OpenAI format (type: function)
+- Sources include display text and lesson links for clickable citations
 
 ## Data Models
 
@@ -127,6 +129,7 @@ See `backend/models.py` for Pydantic definitions:
 - `Course`: Title, instructor, lessons list
 - `Lesson`: Number, title, link
 - `CourseChunk`: Content with metadata (course, lesson, index)
+- `Source`: Display text and optional link for citations
 
 ## Configuration
 
@@ -165,7 +168,10 @@ Query the RAG system.
 ```json
 {
   "answer": "RAG stands for Retrieval-Augmented Generation...",
-  "sources": ["Course Title - Lesson 1", "Course Title - Lesson 3"],
+  "sources": [
+    {"text": "Course Title - Lesson 1", "link": "https://example.com/lesson1"},
+    {"text": "Course Title - Lesson 3", "link": "https://example.com/lesson3"}
+  ],
   "session_id": "session_1"
 }
 ```
@@ -208,7 +214,7 @@ Get course statistics.
 - History is limited to `MAX_HISTORY` exchanges
 
 ### Frontend Cache Busting
-- CSS and JS files include version query params (`?v=9`)
+- CSS and JS files include version query params (`?v=10`)
 - Increment versions when making frontend changes
 
 ## Testing
@@ -222,7 +228,7 @@ Currently no automated test suite exists. Manual testing approach:
    - General knowledge (should not use search)
    - Course-specific (should trigger tool use)
    - With lesson filters
-5. Verify sources appear in collapsible section
+5. Verify sources appear in collapsible section as clickable links
 6. Check conversation continuity (session persistence)
 
 ## Security Considerations
