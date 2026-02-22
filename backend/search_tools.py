@@ -1,3 +1,4 @@
+import json
 from typing import Dict, Any, Optional, Protocol, List
 from abc import ABC, abstractmethod
 from vector_store import VectorStore, SearchResults
@@ -123,6 +124,106 @@ class CourseSearchTool(Tool):
         self.last_sources = sources
         
         return "\n\n".join(formatted)
+
+
+class CourseOutlineTool(Tool):
+    """Tool for retrieving course outline information including title, link, and lesson list"""
+    
+    def __init__(self, vector_store: VectorStore):
+        self.store = vector_store
+        self.last_sources = []  # Track sources for the UI
+    
+    def get_tool_definition(self) -> Dict[str, Any]:
+        """Return OpenAI tool definition for this tool"""
+        return {
+            "type": "function",
+            "function": {
+                "name": "get_course_outline",
+                "description": "Retrieve the complete outline of a course including title, course link, and all lessons with their numbers and titles. Use this when the user asks about course structure, what lessons are in a course, or the outline of a specific course.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "course_name": {
+                            "type": "string",
+                            "description": "Course title (partial matches work, e.g. 'MCP', 'Introduction')"
+                        }
+                    },
+                    "required": ["course_name"]
+                }
+            }
+        }
+    
+    def execute(self, course_name: str) -> str:
+        """
+        Execute the course outline retrieval tool.
+        
+        Args:
+            course_name: Course name/title to retrieve outline for
+            
+        Returns:
+            Formatted course outline information
+        """
+        # Resolve course name to actual title
+        course_title = self.store._resolve_course_name(course_name)
+        
+        if not course_title:
+            return f"No course found matching '{course_name}'."
+        
+        # Get course metadata
+        course_link = self.store.get_course_link(course_title)
+        
+        # Get all courses metadata to find lessons
+        all_courses = self.store.get_all_courses_metadata()
+        
+        course_data = None
+        for course in all_courses:
+            if course.get('title') == course_title:
+                course_data = course
+                break
+        
+        if not course_data:
+            return f"Could not retrieve outline for course '{course_title}'."
+        
+        # Format and return results
+        return self._format_outline(course_title, course_link, course_data)
+    
+    def _format_outline(self, course_title: str, course_link: Optional[str], course_data: Dict[str, Any]) -> str:
+        """Format course outline information"""
+        # Reset sources
+        self.last_sources = []
+        
+        # Add course link as source
+        if course_link:
+            self.last_sources.append(Source(text=course_title, link=course_link))
+        
+        # Build outline
+        lines = []
+        lines.append(f"Course Title: {course_title}")
+        
+        if course_link:
+            lines.append(f"Course Link: {course_link}")
+        
+        # Add lesson list
+        lessons = course_data.get('lessons', [])
+        if lessons:
+            lines.append(f"\nTotal Lessons: {len(lessons)}")
+            lines.append("\nLesson List:")
+            
+            for lesson in lessons:
+                lesson_num = lesson.get('lesson_number', 'N/A')
+                lesson_title = lesson.get('lesson_title', 'Untitled')
+                lesson_link = lesson.get('lesson_link')
+                
+                lines.append(f"  Lesson {lesson_num}: {lesson_title}")
+                
+                # Track lesson links as sources
+                if lesson_link:
+                    source_text = f"{course_title} - Lesson {lesson_num}"
+                    self.last_sources.append(Source(text=source_text, link=lesson_link))
+        else:
+            lines.append("\nNo lessons available for this course.")
+        
+        return "\n".join(lines)
 
 
 class ToolManager:

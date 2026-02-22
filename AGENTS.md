@@ -87,7 +87,9 @@ The application will be available at:
 1. **User Query** → Frontend → POST `/api/query`
 2. **Session Management** → Creates/retrieves session for conversation history
 3. **AI Generation** → Kimi receives query + system prompt + available tools
-4. **Tool Execution** (if needed) → Kimi calls `search_course_content` tool
+4. **Tool Execution** (if needed) → Kimi calls appropriate tool:
+   - `search_course_content` for course content queries
+   - `get_course_outline` for course structure/outline queries
 5. **Semantic Search** → VectorStore queries ChromaDB collections
 6. **Response Formation** → Kimi synthesizes search results into answer
 7. **History Update** → Exchange saved to session, sources tracked
@@ -119,9 +121,22 @@ The application will be available at:
 **SearchTools** (`search_tools.py`):
 - Abstract Tool base class for extensibility
 - `CourseSearchTool`: Searches course content with metadata filtering
+- `CourseOutlineTool`: Retrieves course outline (title, link, lesson list) for structure queries
 - `ToolManager`: Registers and executes tools, tracks sources
 - Tool definitions use OpenAI format (type: function)
 - Sources include display text and lesson links for clickable citations
+
+**Available Tools:**
+
+1. **`search_course_content`**: Search for specific content within course materials
+   - Parameters: `query` (required), `course_name` (optional), `lesson_number` (optional)
+   - Use case: Finding specific information within lesson content
+
+2. **`get_course_outline`**: Retrieve complete course outline
+   - Parameters: `course_name` (required)
+   - Returns: Course title, course link, total lesson count, and list of all lessons with numbers and titles
+   - Format: Each lesson should be on a single line (e.g., "Lesson N: Title")
+   - Use case: Answering questions about course structure, lesson lists, outlines
 
 ## Data Models
 
@@ -226,7 +241,11 @@ Currently no automated test suite exists. Manual testing approach:
 3. Open `http://localhost:8000`
 4. Test queries:
    - General knowledge (should not use search)
-   - Course-specific (should trigger tool use)
+   - Course-specific (should trigger `search_course_content` tool)
+   - Course outline queries (should trigger `get_course_outline` tool), e.g.:
+     - "What lessons are in the MCP course?"
+     - "Show me the course outline for Chroma"
+     - "List all lessons in the Computer Use course"
    - With lesson filters
 5. Verify sources appear in collapsible section as clickable links
 6. Check conversation continuity (session persistence)
