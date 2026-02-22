@@ -11,6 +11,7 @@ import os
 
 from config import config
 from rag_system import RAGSystem
+from models import Source
 
 # Initialize FastAPI app
 app = FastAPI(title="Course Materials RAG System", root_path="")
@@ -40,10 +41,16 @@ class QueryRequest(BaseModel):
     query: str
     session_id: Optional[str] = None
 
+class SourceItem(BaseModel):
+    """Source with display text and optional link"""
+    text: str
+    link: Optional[str] = None
+
+
 class QueryResponse(BaseModel):
     """Response model for course queries"""
     answer: str
-    sources: List[str]
+    sources: List[SourceItem]
     session_id: str
 
 class CourseStats(BaseModel):
@@ -65,9 +72,15 @@ async def query_documents(request: QueryRequest):
         # Process query using RAG system
         answer, sources = rag_system.query(request.query, session_id)
         
+        # Convert Source objects to SourceItem for response
+        source_items = [
+            SourceItem(text=source.text, link=source.link) 
+            for source in sources
+        ]
+        
         return QueryResponse(
             answer=answer,
-            sources=sources,
+            sources=source_items,
             session_id=session_id
         )
     except Exception as e:

@@ -122,10 +122,20 @@ function addMessage(content, type, sources = null, isWelcome = false) {
     let html = `<div class="message-content">${displayContent}</div>`;
     
     if (sources && sources.length > 0) {
+        // Format sources as clickable links
+        const sourcesHtml = sources.map(source => {
+            if (source.link) {
+                // Render as invisible link - the link is embedded but URL not shown
+                return `<a href="${escapeHtml(source.link)}" target="_blank" rel="noopener noreferrer" class="source-link">${escapeHtml(source.text)}</a>`;
+            }
+            // No link available, just show text
+            return `<span class="source-text">${escapeHtml(source.text)}</span>`;
+        }).join(', ');
+        
         html += `
             <details class="sources-collapsible">
                 <summary class="sources-header">Sources</summary>
-                <div class="sources-content">${sources.join(', ')}</div>
+                <div class="sources-content">${sourcesHtml}</div>
             </details>
         `;
     }

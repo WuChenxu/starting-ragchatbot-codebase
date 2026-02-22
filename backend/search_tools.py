@@ -1,6 +1,7 @@
-from typing import Dict, Any, Optional, Protocol
+from typing import Dict, Any, Optional, Protocol, List
 from abc import ABC, abstractmethod
 from vector_store import VectorStore, SearchResults
+from models import Source
 
 
 class Tool(ABC):
@@ -91,7 +92,7 @@ class CourseSearchTool(Tool):
     def _format_results(self, results: SearchResults) -> str:
         """Format search results with course and lesson context"""
         formatted = []
-        sources = []  # Track sources for the UI
+        sources: List[Source] = []  # Track sources for the UI with links
         
         for doc, meta in zip(results.documents, results.metadata):
             course_title = meta.get('course_title', 'unknown')
@@ -103,11 +104,18 @@ class CourseSearchTool(Tool):
                 header += f" - Lesson {lesson_num}"
             header += "]"
             
-            # Track source for the UI
-            source = course_title
+            # Build source text
+            source_text = course_title
             if lesson_num is not None:
-                source += f" - Lesson {lesson_num}"
-            sources.append(source)
+                source_text += f" - Lesson {lesson_num}"
+            
+            # Fetch lesson link from vector store
+            lesson_link = None
+            if lesson_num is not None:
+                lesson_link = self.store.get_lesson_link(course_title, lesson_num)
+            
+            # Track source for the UI
+            sources.append(Source(text=source_text, link=lesson_link))
             
             formatted.append(f"{header}\n{doc}")
         
@@ -143,7 +151,7 @@ class ToolManager:
         
         return self.tools[tool_name].execute(**kwargs)
     
-    def get_last_sources(self) -> list:
+    def get_last_sources(self) -> List[Source]:
         """Get sources from the last search operation"""
         # Check all tools for last_sources attribute
         for tool in self.tools.values():
