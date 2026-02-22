@@ -234,7 +234,30 @@ Get course statistics.
 
 ## Testing
 
-Currently no automated test suite exists. Manual testing approach:
+### Automated Tests
+
+A comprehensive test suite is available in `backend/tests/`:
+
+```bash
+cd backend
+uv run python -m unittest discover tests/ -v
+```
+
+**Test Files:**
+- `test_search_tools.py` - Tests for CourseSearchTool, CourseOutlineTool, and ToolManager
+- `test_ai_generator.py` - Tests for AIGenerator and tool calling integration
+- `test_rag_system.py` - Tests for RAGSystem content-query handling
+- `test_error_scenarios.py` - Tests for error handling and edge cases
+- `test_integration.py` - End-to-end integration tests
+
+**Key Test Coverage:**
+- Tool execution with various inputs and filters
+- Error handling in tools (database errors, missing courses, etc.)
+- AI generator tool calling behavior
+- RAG system query processing pipeline
+- Edge cases (special characters, long queries, empty results)
+
+### Manual Testing
 
 1. Start the server: `./run.sh`
 2. Ensure documents are loaded (check console output)
@@ -257,6 +280,25 @@ Currently no automated test suite exists. Manual testing approach:
 - **Trusted Hosts**: Currently allows all hosts (`["*"]`) - restrict in production
 - **Input Validation**: Pydantic models validate API inputs
 - **File Access**: Document processor reads from filesystem - validate paths if accepting user uploads
+
+## Error Handling
+
+The system implements comprehensive error handling:
+
+**Tool-Level Error Handling:**
+- `CourseSearchTool.execute()` catches all exceptions and returns error messages instead of crashing
+- `CourseOutlineTool.execute()` catches all exceptions and returns error messages
+- Error messages are passed back to the AI for appropriate response generation
+
+**AI Generator Error Handling:**
+- `_handle_tool_execution()` catches tool execution errors and includes them in the conversation context
+- API authentication errors provide helpful setup instructions
+- All other API errors are logged and re-raised with context
+
+**API-Level Error Handling:**
+- FastAPI endpoints catch exceptions and return appropriate HTTP status codes
+- Authentication errors return 401 with setup instructions
+- Other errors return 500 with error details
 
 ## Common Issues
 

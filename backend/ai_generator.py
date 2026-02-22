@@ -163,7 +163,10 @@ Then restart the server.
             function_name = tool_call.function.name
             function_args = json.loads(tool_call.function.arguments)
             
-            tool_result = tool_manager.execute_tool(function_name, **function_args)
+            try:
+                tool_result = tool_manager.execute_tool(function_name, **function_args)
+            except Exception as e:
+                tool_result = f"Error executing tool '{function_name}': {str(e)}"
             
             # Add tool result as a tool message (OpenAI format)
             messages.append({

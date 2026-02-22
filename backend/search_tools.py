@@ -66,29 +66,31 @@ class CourseSearchTool(Tool):
         Returns:
             Formatted search results or error message
         """
-        
-        # Use the vector store's unified search interface
-        results = self.store.search(
-            query=query,
-            course_name=course_name,
-            lesson_number=lesson_number
-        )
-        
-        # Handle errors
-        if results.error:
-            return results.error
-        
-        # Handle empty results
-        if results.is_empty():
-            filter_info = ""
-            if course_name:
-                filter_info += f" in course '{course_name}'"
-            if lesson_number:
-                filter_info += f" in lesson {lesson_number}"
-            return f"No relevant content found{filter_info}."
-        
-        # Format and return results
-        return self._format_results(results)
+        try:
+            # Use the vector store's unified search interface
+            results = self.store.search(
+                query=query,
+                course_name=course_name,
+                lesson_number=lesson_number
+            )
+            
+            # Handle errors
+            if results.error:
+                return f"Search error: {results.error}"
+            
+            # Handle empty results
+            if results.is_empty():
+                filter_info = ""
+                if course_name:
+                    filter_info += f" in course '{course_name}'"
+                if lesson_number:
+                    filter_info += f" in lesson {lesson_number}"
+                return f"No relevant content found{filter_info}."
+            
+            # Format and return results
+            return self._format_results(results)
+        except Exception as e:
+            return f"Search failed: {str(e)}"
     
     def _format_results(self, results: SearchResults) -> str:
         """Format search results with course and lesson context"""
@@ -163,29 +165,32 @@ class CourseOutlineTool(Tool):
         Returns:
             Formatted course outline information
         """
-        # Resolve course name to actual title
-        course_title = self.store._resolve_course_name(course_name)
-        
-        if not course_title:
-            return f"No course found matching '{course_name}'."
-        
-        # Get course metadata
-        course_link = self.store.get_course_link(course_title)
-        
-        # Get all courses metadata to find lessons
-        all_courses = self.store.get_all_courses_metadata()
-        
-        course_data = None
-        for course in all_courses:
-            if course.get('title') == course_title:
-                course_data = course
-                break
-        
-        if not course_data:
-            return f"Could not retrieve outline for course '{course_title}'."
-        
-        # Format and return results
-        return self._format_outline(course_title, course_link, course_data)
+        try:
+            # Resolve course name to actual title
+            course_title = self.store._resolve_course_name(course_name)
+            
+            if not course_title:
+                return f"No course found matching '{course_name}'."
+            
+            # Get course metadata
+            course_link = self.store.get_course_link(course_title)
+            
+            # Get all courses metadata to find lessons
+            all_courses = self.store.get_all_courses_metadata()
+            
+            course_data = None
+            for course in all_courses:
+                if course.get('title') == course_title:
+                    course_data = course
+                    break
+            
+            if not course_data:
+                return f"Could not retrieve outline for course '{course_title}'."
+            
+            # Format and return results
+            return self._format_outline(course_title, course_link, course_data)
+        except Exception as e:
+            return f"Failed to retrieve course outline: {str(e)}"
     
     def _format_outline(self, course_title: str, course_link: Optional[str], course_data: Dict[str, Any]) -> str:
         """Format course outline information"""
