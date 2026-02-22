@@ -87,9 +87,10 @@ The application will be available at:
 1. **User Query** → Frontend → POST `/api/query`
 2. **Session Management** → Creates/retrieves session for conversation history
 3. **AI Generation** → Kimi receives query + system prompt + available tools
-4. **Tool Execution** (if needed) → Kimi calls appropriate tool:
+4. **Tool Execution** (if needed) → Kimi calls appropriate tool(s):
    - `search_course_content` for course content queries
    - `get_course_outline` for course structure/outline queries
+   - Supports **up to 2 sequential rounds** of tool calling for complex queries (comparisons, multi-part questions)
 5. **Semantic Search** → VectorStore queries ChromaDB collections
 6. **Response Formation** → Kimi synthesizes search results into answer
 7. **History Update** → Exchange saved to session, sources tracked
@@ -113,9 +114,13 @@ The application will be available at:
 - Sentence-aware text chunking with configurable overlap
 
 **AIGenerator** (`ai_generator.py`):
-- System prompt defines response style (brief, educational, example-supported)
+- System prompt defines response style (brief, educational, example-supported, well-formatted)
+- System prompt includes tool usage guidelines with examples (e.g., using `lesson_number` when querying specific lessons)
+- System prompt includes formatting guidelines: numbered lists (1. 2. 3.) for multi-point lesson content
 - Tool-based search architecture using OpenAI-compatible API format
-- Handles tool execution loop for multi-step reasoning
+- Supports **up to 2 sequential rounds** of tool calling (`MAX_TOOL_ROUNDS = 2`)
+- `_execute_tool_round()`: Executes a single round of tool calls and prepares messages for next round
+- Tools remain available in each API round until max rounds reached or AI provides final answer
 - Uses Moonshot AI (Kimi) via OpenAI client with custom base URL
 
 **SearchTools** (`search_tools.py`):
@@ -131,6 +136,7 @@ The application will be available at:
 1. **`search_course_content`**: Search for specific content within course materials
    - Parameters: `query` (required), `course_name` (optional), `lesson_number` (optional)
    - Use case: Finding specific information within lesson content
+   - **Important**: When users ask about a specific lesson (e.g., "lesson 5", "lesson 3"), ALWAYS use the `lesson_number` parameter to filter by that lesson number
 
 2. **`get_course_outline`**: Retrieve complete course outline
    - Parameters: `course_name` (required)
@@ -269,6 +275,10 @@ uv run python -m unittest discover tests/ -v
      - "What lessons are in the MCP course?"
      - "Show me the course outline for Chroma"
      - "List all lessons in the Computer Use course"
+   - Sequential/multi-part queries (may trigger up to 2 rounds of tool calls):
+     - "What lessons are in the MCP course and what does Lesson 3 cover?" (outline + content)
+     - "Compare RAG implementation between MCP and Chroma courses" (two searches)
+     - "Find courses that discuss the same topic as lesson 2 of MCP" (outline + cross-search)
    - With lesson filters
 5. Verify sources appear in collapsible section as clickable links
 6. Check conversation continuity (session persistence)
@@ -291,7 +301,8 @@ The system implements comprehensive error handling:
 - Error messages are passed back to the AI for appropriate response generation
 
 **AI Generator Error Handling:**
-- `_handle_tool_execution()` catches tool execution errors and includes them in the conversation context
+- `_execute_tool_round()` catches tool execution errors and returns success/failure status; errors are included in conversation context for final synthesis
+- Sequential tool loop terminates early on tool failure (after final synthesis call)
 - API authentication errors provide helpful setup instructions
 - All other API errors are logged and re-raised with context
 
