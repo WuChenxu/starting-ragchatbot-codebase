@@ -4,6 +4,23 @@ from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from models import Course, CourseChunk
 from sentence_transformers import SentenceTransformer
+import os
+
+# Custom Embedding Function that uses local model
+class LocalSentenceTransformerEmbeddingFunction:
+    """Custom embedding function using locally cached model"""
+    
+    def __init__(self, model_path: str):
+        self.model = SentenceTransformer(model_path)
+    
+    def __call__(self, input: List[str]) -> List[List[float]]:
+        """Generate embeddings for input texts"""
+        embeddings = self.model.encode(input, convert_to_numpy=True)
+        return embeddings.tolist()
+    
+    def name(self) -> str:
+        """Return the name of the embedding function"""
+        return "local_sentence_transformer"
 
 @dataclass
 class SearchResults:
@@ -42,10 +59,17 @@ class VectorStore:
             settings=Settings(anonymized_telemetry=False)
         )
         
-        # Set up sentence transformer embedding function
-        self.embedding_function = chromadb.utils.embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name=embedding_model
-        )
+        # Set up sentence transformer embedding function with local model
+        # Check if model exists locally, otherwise use model name for download
+        local_model_path = os.path.expanduser(f"~/.cache/torch/sentence_transformers/{embedding_model.replace('/', '_')}")
+        if os.path.exists(local_model_path):
+            print(f"Using local model: {local_model_path}")
+            self.embedding_function = LocalSentenceTransformerEmbeddingFunction(local_model_path)
+        else:
+            print(f"Local model not found at {local_model_path}, will attempt to download")
+            self.embedding_function = chromadb.utils.embedding_functions.SentenceTransformerEmbeddingFunction(
+                model_name=embedding_model
+            )
         
         # Create collections for different types of data
         self.course_catalog = self._create_collection("course_catalog")  # Course titles/instructors

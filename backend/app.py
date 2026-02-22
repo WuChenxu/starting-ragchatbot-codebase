@@ -71,7 +71,17 @@ async def query_documents(request: QueryRequest):
             session_id=session_id
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        error_msg = str(e)
+        print(f"Query error: {error_msg}")
+        
+        # Provide more user-friendly error messages
+        if "Invalid Moonshot API Key" in error_msg or "Authentication" in error_msg:
+            raise HTTPException(
+                status_code=401, 
+                detail="API Key 无效。请在 .env 文件中设置正确的 MOONSHOT_API_KEY，然后重启服务器。获取 API Key: https://platform.moonshot.cn/"
+            )
+        
+        raise HTTPException(status_code=500, detail=error_msg)
 
 @app.get("/api/courses", response_model=CourseStats)
 async def get_course_stats():

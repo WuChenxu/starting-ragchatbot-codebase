@@ -1,8 +1,9 @@
-import anthropic
+from openai import OpenAI, AuthenticationError
 from typing import List, Optional, Dict, Any
 
+
 class AIGenerator:
-    """Handles interactions with Anthropic's Claude API for generating responses"""
+    """Handles interactions with Moonshot AI (Kimi) API for generating responses"""
     
     # Static system prompt to avoid rebuilding on each call
     SYSTEM_PROMPT = """ You are an AI assistant specialized in course materials and educational content with access to a comprehensive search tool for course information.
@@ -29,8 +30,11 @@ All responses must be:
 Provide only the direct answer to what was asked.
 """
     
-    def __init__(self, api_key: str, model: str):
-        self.client = anthropic.Anthropic(api_key=api_key)
+    def __init__(self, api_key: str, model: str, base_url: str = "https://api.moonshot.cn/v1"):
+        self.client = OpenAI(
+            api_key=api_key,
+            base_url=base_url
+        )
         self.model = model
         
         # Pre-build base API parameters
@@ -64,72 +68,108 @@ Provide only the direct answer to what was asked.
             else self.SYSTEM_PROMPT
         )
         
-        # Prepare API call parameters efficiently
+        # Prepare messages for OpenAI format
+        messages = [
+            {"role": "system", "content": system_content},
+            {"role": "user", "content": query}
+        ]
+        
+        # Prepare API call parameters
         api_params = {
             **self.base_params,
-            "messages": [{"role": "user", "content": query}],
-            "system": system_content
+            "messages": messages
         }
         
-        # Add tools if available
+        # Add tools if available (OpenAI format)
         if tools:
             api_params["tools"] = tools
-            api_params["tool_choice"] = {"type": "auto"}
+            api_params["tool_choice"] = "auto"
         
-        # Get response from Claude
-        response = self.client.messages.create(**api_params)
-        
-        # Handle tool execution if needed
-        if response.stop_reason == "tool_use" and tool_manager:
-            return self._handle_tool_execution(response, api_params, tool_manager)
-        
-        # Return direct response
-        return response.content[0].text
+        try:
+            # Get response from Kimi
+            response = self.client.chat.completions.create(**api_params)
+            
+            # Handle tool execution if needed
+            message = response.choices[0].message
+            if message.tool_calls and tool_manager:
+                return self._handle_tool_execution(
+                    messages=messages,
+                    assistant_message=message,
+                    tool_manager=tool_manager
+                )
+            
+            # Return direct response
+            return message.content or ""
+            
+        except AuthenticationError as e:
+            error_msg = """
+[API Authentication Error] 
+
+Please check your MOONSHOT_API_KEY in the .env file.
+
+To get a valid API key:
+1. Visit https://platform.moonshot.cn/
+2. Sign up or log in to your account
+3. Go to API Keys section and create a new key
+4. Update your .env file with the new key:
+   MOONSHOT_API_KEY=your-actual-api-key-here
+
+Then restart the server.
+"""
+            print(error_msg)
+            raise Exception("Invalid Moonshot API Key. Please check your .env file configuration.") from e
+        except Exception as e:
+            print(f"Error calling Kimi API: {e}")
+            raise
     
-    def _handle_tool_execution(self, initial_response, base_params: Dict[str, Any], tool_manager):
+    def _handle_tool_execution(self, messages: List[Dict], assistant_message, tool_manager):
         """
         Handle execution of tool calls and get follow-up response.
         
         Args:
-            initial_response: The response containing tool use requests
-            base_params: Base API parameters
+            messages: Current conversation messages
+            assistant_message: The assistant message containing tool calls
             tool_manager: Manager to execute tools
             
         Returns:
             Final response text after tool execution
         """
-        # Start with existing messages
-        messages = base_params["messages"].copy()
-        
-        # Add AI's tool use response
-        messages.append({"role": "assistant", "content": initial_response.content})
+        # Add assistant's message with tool calls
+        messages.append({
+            "role": "assistant",
+            "content": assistant_message.content or "",
+            "tool_calls": [
+                {
+                    "id": tool_call.id,
+                    "type": tool_call.type,
+                    "function": {
+                        "name": tool_call.function.name,
+                        "arguments": tool_call.function.arguments
+                    }
+                }
+                for tool_call in assistant_message.tool_calls
+            ]
+        })
         
         # Execute all tool calls and collect results
-        tool_results = []
-        for content_block in initial_response.content:
-            if content_block.type == "tool_use":
-                tool_result = tool_manager.execute_tool(
-                    content_block.name, 
-                    **content_block.input
-                )
-                
-                tool_results.append({
-                    "type": "tool_result",
-                    "tool_use_id": content_block.id,
-                    "content": tool_result
-                })
-        
-        # Add tool results as single message
-        if tool_results:
-            messages.append({"role": "user", "content": tool_results})
-        
-        # Prepare final API call without tools
-        final_params = {
-            **self.base_params,
-            "messages": messages,
-            "system": base_params["system"]
-        }
+        import json
+        for tool_call in assistant_message.tool_calls:
+            function_name = tool_call.function.name
+            function_args = json.loads(tool_call.function.arguments)
+            
+            tool_result = tool_manager.execute_tool(function_name, **function_args)
+            
+            # Add tool result as a tool message (OpenAI format)
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "content": str(tool_result)
+            })
         
         # Get final response
-        final_response = self.client.messages.create(**final_params)
-        return final_response.content[0].text
+        final_response = self.client.chat.completions.create(
+            **self.base_params,
+            messages=messages
+        )
+        
+        return final_response.choices[0].message.content or ""
