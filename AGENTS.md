@@ -157,7 +157,7 @@ All settings in `backend/config.py`:
 | `EMBEDDING_MODEL` | all-MiniLM-L6-v2 | Sentence transformer model |
 | `CHUNK_SIZE` | 800 | Characters per text chunk |
 | `CHUNK_OVERLAP` | 100 | Overlap between chunks |
-| `MAX_RESULTS` | 5 | Max search results |
+| `MAX_RESULTS` | 5 | Max search results (must be >= 1) |
 | `MAX_HISTORY` | 2 | Conversation turns to remember |
 | `CHROMA_PATH` | ./chroma_db | Vector DB storage location |
 
@@ -306,7 +306,8 @@ The system implements comprehensive error handling:
 2. **UTF-8 encoding issues**: DocumentProcessor falls back to `errors='ignore'`
 3. **Port conflicts**: Change port in `run.sh` if 8000 is in use
 4. **Missing API key**: Application will fail when trying to call Kimi API
-5. **Embedding model download issues**: If you cannot access Hugging Face Hub, use the following steps to download models via mirror:
+5. **Invalid MAX_RESULTS**: If `MAX_RESULTS` is set to 0 or negative, the system will raise a `ValueError` with a helpful message on startup
+6. **Embedding model download issues**: If you cannot access Hugging Face Hub, use the following steps to download models via mirror:
    ```bash
    # Set mirror endpoint and download model
    export HF_ENDPOINT=https://hf-mirror.com

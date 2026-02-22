@@ -52,6 +52,10 @@ class VectorStore:
     """Vector storage using ChromaDB for course content and metadata"""
     
     def __init__(self, chroma_path: str, embedding_model: str, max_results: int = 5):
+        # Validate max_results
+        if max_results <= 0:
+            raise ValueError(f"MAX_RESULTS must be a positive integer, got {max_results}. "
+                           "Please check your configuration and set MAX_RESULTS to a value >= 1.")
         self.max_results = max_results
         # Initialize ChromaDB client
         self.client = chromadb.PersistentClient(
@@ -112,6 +116,13 @@ class VectorStore:
         # Step 3: Search course content
         # Use provided limit or fall back to configured max_results
         search_limit = limit if limit is not None else self.max_results
+        
+        # Validate search limit
+        if search_limit <= 0:
+            return SearchResults.empty(
+                f"Invalid search limit: {search_limit}. "
+                f"The search limit must be a positive integer (>= 1)."
+            )
         
         try:
             results = self.course_content.query(
