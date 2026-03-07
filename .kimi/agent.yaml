@@ -1,0 +1,23 @@
+version: 1
+agent:
+  name: ragchatbot-agent
+  system_prompt_path: ./system.md
+  
+  # 基于 default Agent 继承，排除高风险工具
+  extend: default
+  exclude_tools:
+    # 排除可能造成不可逆影响的工具
+    - "kimi_cli.tools.multiagent:SendDMail"  # 实验性功能
+    # 如需更严格权限，可取消下面注释：
+    # - "kimi_cli.tools.shell:Shell"          # 禁止 Shell 命令执行
+    # - "kimi_cli.tools.web:SearchWeb"        # 禁止网络搜索
+    # - "kimi_cli.tools.web:FetchURL"         # 禁止网页抓取
+
+  # 子 Agent 配置（用于并行任务）
+  subagents:
+    coder:
+      path: ./subagents/coder.yaml
+      description: "处理 Python/FastAPI 编码任务"
+    tester:
+      path: ./subagents/tester.yaml
+      description: "运行测试和验证代码"

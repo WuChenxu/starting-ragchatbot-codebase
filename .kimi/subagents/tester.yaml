@@ -1,0 +1,9 @@
+version: 1
+agent:
+  name: tester
+  extend: ../agent.yaml
+  system_prompt_path: ./tester-system.md
+  
+  # 子 Agent 排除 Task 工具以避免嵌套
+  exclude_tools:
+    - "kimi_cli.tools.multiagent:Task"
