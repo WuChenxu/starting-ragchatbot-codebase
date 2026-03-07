@@ -56,3 +56,51 @@ The application will be available at:
 - Web Interface: `http://localhost:8000`
 - API Documentation: `http://localhost:8000/docs`
 
+## Development
+
+### Code Quality Tools
+
+This project uses [Black](https://black.readthedocs.io/) for automatic code formatting and [isort](https://pycqa.github.io/isort/) for import sorting to maintain consistent code style throughout the codebase.
+
+#### Available Scripts
+
+**Format all code:**
+```bash
+./scripts/format.sh
+```
+This runs Black and isort to automatically format all Python files.
+
+**Check code quality (CI/CD):**
+```bash
+./scripts/check.sh
+```
+This checks if all files are properly formatted without modifying them. Returns exit code 1 if issues are found.
+
+**Run full linting suite:**
+```bash
+./scripts/lint.sh
+```
+This runs comprehensive checks including Black, isort, and syntax validation with detailed output.
+
+#### Tool Configurations
+
+**Black** (`pyproject.toml`):
+- Line length: 100 characters
+- Target Python version: 3.13
+
+**isort** (`pyproject.toml`):
+- Profile: black (compatible with Black formatting)
+- Line length: 100 characters
+
+#### Pre-commit Workflow
+
+Before committing code, run the formatter:
+```bash
+./scripts/format.sh
+```
+
+For CI/CD pipelines, use the check script to validate formatting:
+```bash
+./scripts/check.sh
+```
+

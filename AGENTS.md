@@ -62,8 +62,8 @@ A full-stack Retrieval-Augmented Generation (RAG) system that answers questions 
 # Install uv (if not already installed)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install dependencies
-uv sync
+# Install dependencies (including dev dependencies)
+uv sync --dev
 
 # Configure environment
 cp .env.example .env
@@ -82,6 +82,25 @@ chmod +x run.sh
 ```bash
 cd backend
 uv run uvicorn app:app --reload --port 8000
+```
+
+### Code Quality
+
+This project uses Black and isort for code formatting.
+
+**Format all code:**
+```bash
+./scripts/format.sh
+```
+
+**Check formatting (CI/CD):**
+```bash
+./scripts/check.sh
+```
+
+**Run full linting:**
+```bash
+./scripts/lint.sh
 ```
 
 The application will be available at:
@@ -230,6 +249,9 @@ Delete a conversation session.
 - **Pydantic models**: Use for request/response validation
 - **Error handling**: Wrap external API calls and file operations in try-except blocks
 - **Logging**: Use `print()` for operational messages
+- **Formatting**: All code is formatted with Black (line length: 100) and isort
+  - Run `./scripts/format.sh` before committing
+  - Run `./scripts/check.sh` to verify formatting in CI/CD
 
 ## Testing
 
