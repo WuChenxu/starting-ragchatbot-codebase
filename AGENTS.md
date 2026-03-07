@@ -333,6 +333,62 @@ CSS and JS files include version query params (`?v=12`, `?v=11`). Increment vers
 - Session IDs formatted as `session_1`, `session_2`, etc.
 - History limited to `MAX_HISTORY` exchanges (default: 2 turns)
 
+## Kimi Code CLI 自定义 Agent 配置
+
+项目已配置自定义 Agent 以控制工具权限。配置文件位于 `.kimi/agent.yaml`。
+
+### 已配置的权限
+
+| 工具类型 | 状态 | 说明 |
+|---------|------|------|
+| 文件读取 (ReadFile) | ✅ 启用 | 读取项目文件 |
+| 文件写入 (WriteFile) | ✅ 启用 | 编辑 Python/JS 代码 |
+| 文件编辑 (StrReplaceFile) | ✅ 启用 | 修改现有文件 |
+| Shell 执行 (Shell) | ✅ 启用 | 运行 uv、测试等命令 |
+| 网页搜索 (SearchWeb) | ✅ 启用 | 搜索文档资料 |
+| 网页抓取 (FetchURL) | ✅ 启用 | 获取网页内容 |
+| 子 Agent (Task) | ✅ 启用 | 并行任务处理 |
+| SendDMail | ❌ 禁用 | 实验性功能 |
+
+### 子 Agent 配置
+
+- **coder**: 处理 Python/FastAPI 编码任务 (`.kimi/subagents/coder.yaml`)
+- **tester**: 运行测试和验证代码 (`.kimi/subagents/tester.yaml`)
+
+### 使用方法
+
+**方式 1: 使用项目启动脚本（推荐）**
+```bash
+./kimi.sh
+```
+
+**方式 2: 手动指定 Agent 文件**
+```bash
+kimi --agent-file .kimi/agent.yaml
+```
+
+**方式 3: 使用默认 Agent（无自定义权限）**
+```bash
+kimi
+```
+
+### 修改权限配置
+
+编辑 `.kimi/agent.yaml` 文件：
+
+```yaml
+# 禁用 Shell 命令（更严格）
+exclude_tools:
+  - "kimi_cli.tools.shell:Shell"
+
+# 禁用网络访问
+disable_tools:
+  - "kimi_cli.tools.web:SearchWeb"
+  - "kimi_cli.tools.web:FetchURL"
+```
+
+修改后重新启动 Kimi Code CLI 即可生效。
+
 ## Related Documentation
 
 - `README.md`: User-facing setup and usage instructions
